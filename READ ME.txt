@@ -1,0 +1,34 @@
+To install the driver run the pc in test mode AND with allowed unsigned driver mode, mode (7) from the special restarts.
+Use the install_moufiltr.bat to install the driver, just run it as admin and plu/unplug the device every time you unistall it or install so the pc can rebuild the driver stack.
+Remember to run shudown from the menu before uninstalling it if you are planning to install it back or you probably will have to restart your pc.
+DO NOT use the .inf to install it as it is not working for usb mice.
+If you installed it with the .inf file it's not gonna place the moufiltr driver in the right place.
+Anyway follow these steps to make it work if you installed it with pnputil and .inf file:
+
+1) copy the .sys file in this directory:  C:\Windows\System32\drivers
+
+2) run in admin prompt this command -> sc create moufiltr type= kernel start= demand error= normal ^
+ binPath= \SystemRoot\System32\drivers\moufiltr.sys displayname= "Mouse Filter (moufiltr)"
+
+If everything went fine run this command -> sc qc moufiltr
+And this is what you should see as output:
+SERVICE_NAME: moufiltr
+        TYPE               : 1  KERNEL_DRIVER
+        START_TYPE         : 3  DEMAND_START
+        BINARY_PATH_NAME    : \SystemRoot\System32\drivers\moufiltr.sys
+        DISPLAY_NAME        : Mouse Filter (moufiltr)
+
+3) open regedit and go to
+HKEY_LOCAL_MACHINE
+ └── SYSTEM
+     └── CurrentControlSet
+         └── Control
+             └── Class
+                 └── {4D36E96F-E325-11CE-BFC1-08002BE10318} 
+
+Double click on "UpperFilters" on the righ of your screen and type "moufiltr" BEFORE "mouclass"
+so the while you are typing you should see 	moufiltr
+						mouclass
+and the output should be : moufiltr mouclass
+
+unplug and plug back the device and it shold work.
