@@ -20,10 +20,10 @@ Gain ×2 / ×4 – Increase sensitivity
 Deadzone – Ignore small movements near the center
 
 ### Quick usage
-Run install_moufiltr.bat as Administrator.
-Disable/enable or re-plug the mouse to rebuild the HID stack.
-Launch MouFiltr Console to choose the desired filter mode.
-To remove the driver, run uninstall_moufiltr.bat (Administrator required).
+- Run install_moufiltr.bat as Administrator.
+- Disable/enable or re-plug the mouse to rebuild the HID stack.
+- Launch MouFiltr Console to choose the desired filter mode.
+- To remove the driver, run uninstall_moufiltr.bat (Administrator required).
 
 ## Installation & Troubleshooting
 
