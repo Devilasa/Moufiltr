@@ -1,16 +1,16 @@
-#🖱️ MouFiltr – Mouse Input Filter Driver
+# 🖱️ MouFiltr – Mouse Input Filter Driver
 
 MouFiltr is a simple KMDF upper-filter driver for mouse devices on Windows.
 It attaches above the system’s mouclass driver to intercept and modify raw mouse input events.
 
-##Overview
+## Overview
 
 The project includes:
 A kernel-mode filter driver (moufiltr.sys) that processes mouse input packets.
 A user-mode console application to switch filtering modes via IOCTL communication.
 Lightweight installation and removal scripts (install_moufiltr.bat, uninstall_moufiltr.bat) for easy testing on development systems.
 
-###How it works
+### How it works
 The driver is registered as an UpperFilter above mouclass in the mouse driver stack.
 It intercepts movement and button data in real time.
 Depending on the selected mode, it applies one of filtering algorithms:
@@ -19,13 +19,13 @@ Invert XY – Invert both X and Y axes
 Gain ×2 / ×4 – Increase sensitivity
 Deadzone – Ignore small movements near the center
 
-###Quick usage
+### Quick usage
 Run install_moufiltr.bat as Administrator.
 Disable/enable or re-plug the mouse to rebuild the HID stack.
 Launch MouFiltr Console to choose the desired filter mode.
 To remove the driver, run uninstall_moufiltr.bat (Administrator required).
 
-##Installation & Troubleshooting
+## Installation & Troubleshooting
 
 To install the driver, boot Windows in Test Mode and enable unsigned driver installation (option 7 from the Advanced Startup menu).
 Use the install_moufiltr.bat to install the driver, just run it as admin and plu/unplug the device every time you unistall it or install so the pc can rebuild the driver stack.
@@ -48,12 +48,7 @@ SERVICE_NAME: moufiltr
         DISPLAY_NAME        : Mouse Filter (moufiltr)
 
 3. open regedit and go to
-HKEY_LOCAL_MACHINE
- └── SYSTEM
- 	└── CurrentControlSet
-         └── Control
-             └── Class
-                 └── {4D36E96F-E325-11CE-BFC1-08002BE10318} 
+HKEY_LOCAL_MACHINE ──> SYSTEM ──> CurrentControlSet ──> Control ──> Class ──> {4D36E96F-E325-11CE-BFC1-08002BE10318} 
 
 Double click on "UpperFilters" on the righ of your screen and type "moufiltr" BEFORE "mouclass"
 so the while you are typing you should see 	moufiltr
