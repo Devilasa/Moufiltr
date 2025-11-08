@@ -34,9 +34,9 @@ DO NOT use the .inf to install it as it is not working for usb mice.
 If you installed it with the .inf file it's not gonna place the moufiltr driver in the right place.
 Anyway follow these steps to make it work if you installed it with pnputil and .inf file:
 
-1) copy the .sys file in this directory:  C:\Windows\System32\drivers
+1: copy the .sys file in this directory:  C:\Windows\System32\drivers
 
-2) run in admin prompt this command -> sc create moufiltr type= kernel start= demand error= normal ^
+2: run in admin prompt this command -> sc create moufiltr type= kernel start= demand error= normal ^
  binPath= \SystemRoot\System32\drivers\moufiltr.sys displayname= "Mouse Filter (moufiltr)"
 
 If everything went fine run this command -> sc qc moufiltr
@@ -47,7 +47,7 @@ SERVICE_NAME: moufiltr
         BINARY_PATH_NAME    : \SystemRoot\System32\drivers\moufiltr.sys
         DISPLAY_NAME        : Mouse Filter (moufiltr)
 
-3) open regedit and go to
+3: open regedit and go to
 HKEY_LOCAL_MACHINE
  └── SYSTEM
      └── CurrentControlSet
