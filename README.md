@@ -28,7 +28,7 @@ Deadzone – Ignore small movements near the center
 ## Installation & Troubleshooting
 
 To install the driver, boot Windows in Test Mode and enable unsigned driver installation (option 7 from the Advanced Startup menu).
-Use the install_moufiltr.bat to install the driver, just run it as admin and plu/unplug the device every time you unistall it or install so the pc can rebuild the driver stack.
+Use the install_moufiltr.bat to install the driver, just run it as admin and plug/unplug the device every time you uninstall it or install it so the pc can rebuild the driver stack.
 Remember to run shutdown from the menu before uninstalling it if you are planning to install it back or you probably will have to restart your pc.
 DO NOT use the .inf to install it as it is not working for usb mice.
 If you installed it with the .inf file it's not gonna place the moufiltr driver in the right place.
