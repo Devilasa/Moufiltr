@@ -10,12 +10,13 @@ extern "C" {
 // Device type privato (range user-defined 0x8000-0xFFFF)
 #define FILE_DEVICE_MOUFILTR  0x8000
 
+// codici IOCTL  che user-mode usa per parlare con il driver
 #define IOCTL_MOUFILTR_GET_MODE CTL_CODE(FILE_DEVICE_MOUFILTR, 0x801, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_MOUFILTR_SET_MODE CTL_CODE(FILE_DEVICE_MOUFILTR, 0x802, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define IOCTL_MOUFILTR_SHUTDOWN CTL_CODE(FILE_DEVICE_MOUFILTR, 0x803, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 
-// Modalit‡ di filtro
+// Modalit√† di filtro
     typedef enum _MOUFILTR_MODE {
         MF_MODE_NONE = 0, // pass-through
         MF_MODE_INVERT_XY = 1, // invert X & Y
@@ -27,3 +28,4 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
+
