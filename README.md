@@ -11,7 +11,7 @@ A user-mode console application to switch filtering modes via IOCTL communicatio
 Lightweight installation and removal scripts (install_moufiltr.bat, uninstall_moufiltr.bat) for easy testing on development systems.
 
 ### How it works
-The driver is registered as an UpperFilter above mouclass in the mouse driver stack.
+The driver is registered as an UpperFilter under mouclass above mouhid in the mouse driver stack.
 It intercepts movement and button data in real time.
 Depending on the selected mode, it applies one of filtering algorithms:
 None – Pass-through (no modification)
