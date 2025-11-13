@@ -42,30 +42,39 @@ static volatile LONG g_MouFiltrMode = MF_MODE_NONE; // default: pass-through
 static WDFDEVICE g_CtlDevice = NULL;
 // Guard per singola creazione (thread-safe)
 static volatile LONG g_CtlCreated = 0;
-// Tenerli static � pi� sicuro: non �inquinano� il namespace del driver.
-// 
+// Tenerli static è più sicuro: non “inquinano” il namespace del driver.
 
 
 
+
+//  DriverEntry è il "MAIN" del driver, punto di ingresso
 NTSTATUS
 DriverEntry (
-    IN  PDRIVER_OBJECT  DriverObject,
+    // IN è una macro che sta per Input, non ha effetto sul codice compilato, è un annotazione, 
+    // serve ad indicare al programmatore che  l'argomento DriverObject è un parametro di input
+    // l'unico vero effetto lo ha sugli strumenti di analisi del codice, lo utilizzano per rilevare potenziali errori, 
+    // avvisando se la funzione tenta di modificare il parametro in un modo non previsto per un input. 
+    
+    // DriverObject è una struttura creata dall’ I/O Manager che rappresenta il driver nel modello WDM, 
+    // I/O Manager è quello che chiama la DriverEntry quando viene caricato il driver.
+    // In WDF si usa poco direttamente, WDf ci costruisce i propri oggetti sopra. (WDFDRIVER, WDFDEVICE, …)
+
+    IN  PDRIVER_OBJECT  DriverObject,       
     IN  PUNICODE_STRING RegistryPath
     )
 /*++
 Routine Description:
 
-     Installable driver initialization entry point.
+    Installable driver initialization entry point.
     This entry point is called directly by the I/O system.
 
 --*/
 {
-    WDF_DRIVER_CONFIG               config;
-    NTSTATUS                                status;
+    WDF_DRIVER_CONFIG   config;
+    NTSTATUS            status;
 
     DebugPrint(("Mouse Filter Driver Sample - Driver Framework Edition.\n"));
     DebugPrint(("Built %s %s\n", __DATE__, __TIME__));
-    DebugPrint(("MOUFILTER USB TEST 1\n"));
     
     // Initialize driver config to control the attributes that
     // are global to the driver. Note that framework by default
@@ -75,24 +84,29 @@ Routine Description:
     // config structure. In general xxx_CONFIG_INIT macros are provided to
     // initialize most commonly used members.
 
+
+
+    // Inizializza config con valori di default e registra la callback di PnP EvtDeviceAdd, chiamata cruciale
     WDF_DRIVER_CONFIG_INIT(
         &config,
         MouFilter_EvtDeviceAdd
     );
 
-	// Aggiunte per IOCTL user-mode
-	// Override del driver unload per rimuovere il control device
+	// Override del driver unload per rimuovere il control devic, AGG_IOCTL
     config.EvtDriverUnload = MouFiltr_EvtDriverUnload;
 
 
     //
     // Create a framework driver object to represent our driver.
     //
+    // Crea l’oggetto WDFDRIVER che rappresenta il tuo driver dentro il framework.
+    // Collega il WDFDRIVER al DriverObject WDM passato dall’I / O Manager.
     status = WdfDriverCreate(DriverObject,
                             RegistryPath,
                             WDF_NO_OBJECT_ATTRIBUTES,
                             &config,
-                            WDF_NO_HANDLE); // hDriver optional
+                            WDF_NO_HANDLE); // hDriver optional. Se non ti serve conservare l’handle del driver, puoi passare questo. In alternativa usi WDFDRIVER* per riutilizzarlo più avanti.
+    // Se successo: da questo momento il driver è “agganciato” a WDF. Appena il PnP enumera device compatibili, WDF chiamerà MouFilter_EvtDeviceAdd per ciascun device.
     if (!NT_SUCCESS(status)) {
         DebugPrint( ("WdfDriverCreate failed with status 0x%x\n", status));
     }
@@ -100,6 +114,12 @@ Routine Description:
     return status; 
 }
 
+
+
+
+
+// Evt sta per evento
+// Questa viene chiamata quando viene rilevato un nuovo dispositivo Plug and Play gestito dal driver
 NTSTATUS
 MouFilter_EvtDeviceAdd(
     IN WDFDRIVER        Driver,
@@ -135,6 +155,7 @@ Return Value:
     WDFDEVICE                          hDevice;
     WDF_IO_QUEUE_CONFIG        ioQueueConfig;
     
+    // Evita il warning “parametro non usato” per Driver. Nessun effetto runtime.
     UNREFERENCED_PARAMETER(Driver);
 
     PAGED_CODE();
@@ -146,7 +167,7 @@ Return Value:
     // takes care of inherting all the device flags & characterstics
     // from the lower device you are attaching to.
     //
-    WdfFdoInitSetFilter(DeviceInit);
+    WdfFdoInitSetFilter(DeviceInit); // dichiariamo il device come filtro!
 
     WdfDeviceInitSetDeviceType(DeviceInit, FILE_DEVICE_MOUSE);
 
@@ -159,13 +180,15 @@ Return Value:
     // a WDM deviceobject, attach to the lower stack and set the
     // appropriate flags and attributes.
     //
+    // Crea il WDFDEVICE e Consuma DeviceInit
     status = WdfDeviceCreate(&DeviceInit, &deviceAttributes, &hDevice);
     if (!NT_SUCCESS(status)) {
         DebugPrint(("WdfDeviceCreate failed with status code 0x%x\n", status));
         return status;
     }
 
-    
+    // InterlockedExchange garantisce atomicità su CPU multi-core/IRQL vari.
+    // Viene portata allo stato iniziale (pass-trough) la modalità del filtro, (impostata a NONE)
     InterlockedExchange(&g_MouFiltrMode, (LONG)MF_MODE_NONE);
     // Aggiunte per IOCTL user-mode
 	//
@@ -182,6 +205,7 @@ Return Value:
     // a sequential queue, this request will be stuck in the queue because of the 
     // outstanding ioctl request sent earlier to the port driver.
     //
+    // Crea la coda I/O di default del device con modalità Parallel.
     WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(&ioQueueConfig,
                              WdfIoQueueDispatchParallel);
 
@@ -189,6 +213,8 @@ Return Value:
     // Framework by default creates non-power managed queues for
     // filter drivers.
     //
+    // Registra la callback per IRP_MJ_INTERNAL_DEVICE_CONTROL (IOCTL interni).
+    // Qui intercetta IOCTL fondamentali del mouse, es. IOCTL_INTERNAL_MOUSE_CONNECT/DISCONNECT.
     ioQueueConfig.EvtIoInternalDeviceControl = MouFilter_EvtIoInternalDeviceControl;
 
     status = WdfIoQueueCreate(hDevice,
@@ -207,9 +233,11 @@ Return Value:
 // Aggiunta funzione per IOCTL user-mode
 // Crea il control device per gli IOCTL user-mode (una sola istanza per driver)
 //
+// Crea il “control device” del tuo driver,
+// cioè il device fittizio che user-mode può aprire con CreateFile("\\.\MouFiltrCtl") per mandare IOCTL.
 NTSTATUS MouFiltr_CreateControlDevice(_In_ WDFDRIVER Driver)
 {
-    // evita creazioni multiple se EvtDeviceAdd viene chiamato per pi� mouse
+    // evita creazioni multiple se EvtDeviceAdd viene chiamato per più mouse
     if (InterlockedCompareExchange(&g_CtlCreated, 1, 0) != 0)
         return STATUS_SUCCESS;
 
@@ -359,7 +387,7 @@ VOID MouFiltr_EvtIoDeviceControl(
 
         WDF_WORKITEM_CONFIG_INIT(&workitemConfig, MouFiltr_ShutdownWorkItem);
         WDF_OBJECT_ATTRIBUTES_INIT(&workitemAttrib);
-        workitemAttrib.ParentObject = g_CtlDevice; // il parent � il control device
+        workitemAttrib.ParentObject = g_CtlDevice; // il parent è il control device
 
         wStatus = WdfWorkItemCreate(&workitemConfig,
             &workitemAttrib,
@@ -396,6 +424,8 @@ Routine Description:
 
 
 --*/
+// è un helper che viene chiamato dal tuo stesso driver, tipicamente dentro MouFilter_EvtIoInternalDeviceControl,
+// per inoltrare richieste al driver sottostante senza modificarle.
 {
     //
     // Pass the IRP to the target
@@ -425,11 +455,11 @@ Routine Description:
 
 VOID
 MouFilter_EvtIoInternalDeviceControl(
-    IN WDFQUEUE      Queue,
-    IN WDFREQUEST    Request,
-    IN size_t        OutputBufferLength,
+    IN WDFQUEUE      Queue, // la coda WDF che ha ricevuto la richiesta.
+    IN WDFREQUEST    Request, // la richiesta WDF (wrappa l’IRP) da gestire.
+    IN size_t        OutputBufferLength, 
     IN size_t        InputBufferLength,
-    IN ULONG         IoControlCode
+    IN ULONG         IoControlCode //codice dell'operazione (IOCTL)
     )
 /*++
 
@@ -505,8 +535,8 @@ Routine Description:
         // Hook into the report chain.  Everytime a mouse packet is reported to
         // the system, MouFilter_ServiceCallback will be called
         //
-        connectData->ClassDeviceObject = WdfDeviceWdmGetDeviceObject(hDevice);
-        connectData->ClassService = MouFilter_ServiceCallback;
+        connectData->ClassDeviceObject = WdfDeviceWdmGetDeviceObject(hDevice); // sovrascrivi il ClassDeviceObject con il mio DEVICE_OBJECT WDM (quello del filtro);
+        connectData->ClassService = MouFilter_ServiceCallback;  // sostituisci la callback con MouFilter_ServiceCallback (mia funzione).
 
         break;
 
@@ -530,7 +560,7 @@ Routine Description:
     // i8042 (ie PS/2) mouse.  This is only necessary if you want to do PS/2
     // specific functions, otherwise hooking the CONNECT_DATA is sufficient
     //
-    case IOCTL_INTERNAL_I8042_HOOK_MOUSE:   
+    case IOCTL_INTERNAL_I8042_HOOK_MOUSE:   //PS/2 ONLY
 
           DebugPrint(("hook mouse received!\n"));
         
@@ -601,6 +631,7 @@ MouFilter_IsrHook (
 /*++
 
 Remarks:
+
     i8042prt specific code, if you are writing a packet only filter driver, you
     can remove this function
 
@@ -666,9 +697,9 @@ Return Value:
 VOID
 MouFilter_ServiceCallback(
     IN PDEVICE_OBJECT DeviceObject,
-    IN PMOUSE_INPUT_DATA InputDataStart,
-    IN PMOUSE_INPUT_DATA InputDataEnd,
-    IN OUT PULONG InputDataConsumed
+    IN PMOUSE_INPUT_DATA InputDataStart, // primo MOUSE_INPUT_DATA del batch.
+    IN PMOUSE_INPUT_DATA InputDataEnd, // uno-past-the-end: il puntatore al primo elemento dopo l’ultimo; numero pacchetti = InputDataEnd - InputDataStart.
+    IN OUT PULONG InputDataConsumed // quanti pacchetti sono stati “consumati” dal livello superiore (di solito lo imposta la callback originale che chiamiamo alla fine).
     )
 /*++
 
@@ -769,3 +800,11 @@ Return Value:
 } 
 
 #pragma warning(pop)
+
+//Le funzioni Interlocked* (come InterlockedExchange, InterlockedAdd, InterlockedCompareExchange, ecc.) sono primitive atomiche fornite da Windows per:
+// leggere, scrivere, confrontare, aumentare / decrementare, scambiare valori
+// in modo atomico, cioè non interrompibile e thread - safe.
+// In kernel - mode questo è obbligatorio ogni volta che :
+// due o più thread toccano la stessa variabile, oppure
+// un thread e un DPC toccano la stessa variabile, oppure
+// IRQL alti impediscono l’uso di mutex o lock normali.
