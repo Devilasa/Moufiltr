@@ -1,7 +1,7 @@
 # 🖱️ MouFiltr – Mouse Input Filter Driver
 
 MouFiltr is a simple KMDF upper-filter driver for mouse devices on Windows.
-It attaches above the system’s mouclass driver to intercept and modify raw mouse input events.
+It attaches under the system’s mouclass driver to intercept and modify raw mouse input events.
 
 ## Overview
 
